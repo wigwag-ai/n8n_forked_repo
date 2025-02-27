@@ -91,6 +91,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
+import { useFoldersStore } from '@/stores/folders.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -125,6 +126,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const rootStore = useRootStore();
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
+	const foldersStore = useFoldersStore();
 
 	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
@@ -515,8 +517,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			Object.keys(options).length ? options : undefined,
 			includeFolders ? includeFolders : undefined,
 		);
-
 		totalWorkflowCount.value = count;
+
 		return data;
 	}
 
@@ -539,7 +541,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowData;
 	}
 
-	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
+	async function getNewWorkflowData(
+		name?: string,
+		projectId?: string,
+		parentFolderId?: string,
+	): Promise<INewWorkflowData> {
 		let workflowData = {
 			name: '',
 			settings: { ...defaults.settings },
@@ -548,6 +554,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const data: IDataObject = {
 				name,
 				projectId,
+				parentFolderId,
 			};
 
 			workflowData = await workflowsApi.getNewWorkflow(
@@ -1469,6 +1476,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (!sendData.projectId && projectStore.currentProjectId) {
 			(sendData as unknown as IDataObject).projectId = projectStore.currentProjectId;
+		}
+
+		if (!sendData.parentFolderId && foldersStore.currentFolderId) {
+			(sendData as unknown as IDataObject).parentFolderId = foldersStore.currentFolderId;
 		}
 
 		const newWorkflow = await makeRestApiRequest<IWorkflowDb>(
